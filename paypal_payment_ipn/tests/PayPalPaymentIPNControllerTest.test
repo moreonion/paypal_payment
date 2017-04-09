@@ -53,9 +53,9 @@ class PayPalPaymentIPNControllerTest extends PayPalPaymentIPNWebTestCase {
    * @depends testSave
    */
   public function testLoad() {
-    $ipn = new PayPalPaymentIPN();
+    $ipn = new PayPalPaymentIPN(array('psiid' => 42));
     PayPalPaymentIPNController::save($ipn);
-    $ipn_loaded = PayPalPaymentIPNController::load($ipn->txn_id);
+    $ipn_loaded = PayPalPaymentIPNController::load($ipn->psiid);
     $this->assertTrue($ipn_loaded instanceof PayPalPaymentIPN, 'An IPN is loaded correctly.');
     $non_existing_ipn_loaded = PayPalPaymentIPNController::load(999);
     $this->assertFalse($non_existing_ipn_loaded, 'A non-existing IPN is not loaded.');
@@ -67,9 +67,9 @@ class PayPalPaymentIPNControllerTest extends PayPalPaymentIPNWebTestCase {
    * @depends testSave
    */
   public function testDelete() {
-    $ipn = new PayPalPaymentIPN();
+    $ipn = new PayPalPaymentIPN(array('psiid' => 42));
     PayPalPaymentIPNController::save($ipn);
-    PayPalPaymentIPNController::delete($ipn->txn_id);
+    PayPalPaymentIPNController::delete($ipn->psiid);
     $count = db_select('paypal_payment_ipn', 'mpi')
       ->condition('txn_id', $ipn->txn_id)
       ->countQuery()
@@ -110,7 +110,7 @@ class PayPalPaymentIPNControllerTest extends PayPalPaymentIPNWebTestCase {
     $ipn = new PayPalPaymentIPN($ipn_variables);
     $ipn->pid = PayPalPaymentIPNController::PID($ipn_variables['invoice']);
     PayPalPaymentIPNController::save($ipn);
-    $this->assertFalse(PayPalPaymentIPNController::validate($ipn_variables));
+    $this->assertTrue(PayPalPaymentIPNController::validate($ipn_variables));
 
     // Test IPN variables for which no Payment exists.
     $ipn_variables = $this->mockIPNVariables(999);
@@ -130,6 +130,13 @@ class PayPalPaymentIPNControllerTest extends PayPalPaymentIPNWebTestCase {
     PayPalPaymentIPNController::process($ipn_variables);
     $payment = entity_load_single('payment', $payment->pid);
     $this->assertNotEqual($original_payment_status, $payment->getStatus()->status);
+
+    // Test processing the same IPN again.
+    $original_payment_status = $payment->getStatus()->status;
+    $ipn_variables = $this->mockIPNVariables($payment->pid);
+    PayPalPaymentIPNController::process($ipn_variables);
+    $payment = entity_load_single('payment', $payment->pid);
+    $this->assertEqual($original_payment_status, $payment->getStatus()->status);
   }
 
   /**

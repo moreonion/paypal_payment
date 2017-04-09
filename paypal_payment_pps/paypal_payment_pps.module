@@ -249,10 +249,12 @@ function paypal_payment_pps_form_redirect_access(Payment $payment, $account = NU
  */
 function paypal_payment_pps_return() {
   $ipn_variables = $_POST;
+  $status = PayPalPaymentIPNController::process($ipn_variables);
   $ipn = new PayPalPaymentIPN($ipn_variables);
+  $ipn->pid = $status->pid;
+  $ipn->psiid = $status->psiid;
   PayPalPaymentIPNController::save($ipn);
-  PayPalPaymentIPNController::process($ipn_variables);
-  $payment = entity_load_single('payment', PayPalPaymentIPNController::PID($ipn_variables['invoice']));
+  $payment = entity_load_single('payment', $ipn->pid);
   $payment->finish();
 }
 

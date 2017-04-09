@@ -30,6 +30,13 @@ class PayPalPaymentIPN {
   public $txn_id = '';
 
   /**
+   * The payment status item ID.
+   *
+   * @var string
+   */
+  public $psiid = 0;
+
+  /**
    * Constructs a new instance.
    */
   public function __construct(array $properties = array()) {

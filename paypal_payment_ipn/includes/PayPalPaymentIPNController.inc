@@ -24,15 +24,15 @@ abstract class PayPalPaymentIPNController {
   /**
    * Loads an IPN.
    *
-   * @param integer $txn_id
-   *   The PayPal transaction ID of the IPN to load.
+   * @param int $psiid
+   *   The payment status item ID of the IPN to load.
    *
    * @return PayPalPaymentIPN|false
    */
-  public static function load($txn_id) {
+  public static function load($psiid) {
     $ipn_data = db_select('paypal_payment_ipn', 'mpi')
       ->fields('mpi')
-      ->condition('txn_id', $txn_id)
+      ->condition('psiid', $psiid)
       ->execute()
       ->fetchAssoc();
 
@@ -52,10 +52,9 @@ abstract class PayPalPaymentIPNController {
    */
   public static function save(PayPalPaymentIPN $ipn) {
     $fields = array_intersect_key(get_object_vars($ipn), get_class_vars(get_class($ipn)));
+
     $merge_status = db_merge('paypal_payment_ipn')
-      ->key(array(
-        'txn_id' => $ipn->txn_id,
-      ))
+      ->key(array('psiid' => $ipn->psiid))
       ->fields($fields)
       ->execute();
 
@@ -65,12 +64,12 @@ abstract class PayPalPaymentIPNController {
   /**
    * Deletes an IPN.
    *
-   * @param integer $txn_id
-   *   The PayPal transaction ID of the IPN to delete.
+   * @param int $psiid
+   *   The payment status item ID of the IPN to load.
    */
-  public static function delete($txn_id) {
+  public static function delete($psiid) {
     db_delete('paypal_payment_ipn')
-      ->condition('txn_id', $txn_id)
+      ->condition('psiid', $psiid)
       ->execute();
   }
 
@@ -137,25 +136,15 @@ abstract class PayPalPaymentIPNController {
    * @return boolean
    */
   public static function validate(array $ipn_variables) {
-    if (isset($ipn_variables['txn_id'])) {
-      // Make sure this IPN was not processed before.
-      $ipn = PayPalPaymentIPNController::load($ipn_variables['txn_id']);
-      if (!$ipn) {
-        // Check if the IPN matches a Payment.
-        if (isset($ipn_variables['invoice'])) {
-          $pid = self::PID($ipn_variables['invoice']);
-          if ($pid) {
-            $payment = entity_load_single('payment', $pid);
-            if ($payment) {
-              // Allow payment method controllers to completely take over validation.
-              if ($payment->method->controller instanceof PayPalPaymentIPNPaymentMethodControllerInterface) {
-                return $payment->method->controller->PayPalValidateIPNVariables($payment, $ipn_variables);
-              }
-              else {
-                return TRUE;
-              }
-            }
-          }
+    // Only process IPNs for which we have a payment.
+    if (isset($ipn_variables['invoice']) && ($pid = self::PID($ipn_variables['invoice']))) {
+      if ($payment = entity_load_single('payment', $pid)) {
+        // Allow payment method controllers to completely take over validation.
+        if ($payment->method->controller instanceof PayPalPaymentIPNPaymentMethodControllerInterface) {
+          return $payment->method->controller->PayPalValidateIPNVariables($payment, $ipn_variables);
+        }
+        else {
+          return TRUE;
         }
       }
     }
@@ -167,7 +156,8 @@ abstract class PayPalPaymentIPNController {
    *
    * @param array $ipn_variables
    *
-   * @return NULL
+   * @return \PaymentStatusItem
+   *   The new payment status item.
    */
   public static function process(array $ipn_variables) {
     $pid = self::PID($ipn_variables['invoice']);
@@ -177,6 +167,7 @@ abstract class PayPalPaymentIPNController {
     if ($payment->method->controller instanceof PayPalPaymentIPNPaymentMethodControllerInterface) {
       $payment->method->controller->PayPalProcessIPN($payment, $ipn_variables);
     }
+    return $payment->getStatus();
   }
 
   /**

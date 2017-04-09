@@ -34,8 +34,10 @@ function paypal_payment_ipn_post() {
     $ipn_variables[$ipn_variable] = rawurldecode($value);
   }
   if (PayPalPaymentIPNController::acknowledge($ipn_variables) && PayPalPaymentIPNController::validate($ipn_variables)) {
+    $new_status = PayPalPaymentIPNController::process($ipn_variables);
     $ipn = new PayPalPaymentIPN($ipn_variables);
+    $ipn->pid = $new_status->pid;
+    $ipn->psiid = $new_status->psiid;
     PayPalPaymentIPNController::save($ipn);
-    PayPalPaymentIPNController::process($ipn_variables);
   }
 }
