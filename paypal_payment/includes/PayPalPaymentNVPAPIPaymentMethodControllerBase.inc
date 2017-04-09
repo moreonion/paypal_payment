@@ -112,9 +112,10 @@ abstract class PayPalPaymentNVPAPIPaymentMethodControllerBase extends PaymentMet
     }
     $post_data = implode('&', $post_data);
 
-    $response = drupal_http_request($this->NVPAPIServerURL($payment->method->controller_data['server']), array(
+    $response = chr_curl_http_request($this->NVPAPIServerURL($payment->method->controller_data['server']), array(
       'method' => 'POST',
       'data' => $post_data,
+      'verify_ssl' => TRUE,
     ));
 
     if (isset($response->error)) {

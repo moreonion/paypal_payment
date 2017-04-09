@@ -107,9 +107,10 @@ abstract class PayPalPaymentIPNController {
     $url = url($url, array(
       'external' => TRUE,
     ));
-    $response = drupal_http_request($url, array(
+    $response = chr_curl_http_request($url, array(
       'method' => 'POST',
       'data' => $data,
+      'verify_ssl' => TRUE,
     ));
     // Process the response.
     if (isset($response->error)) {
