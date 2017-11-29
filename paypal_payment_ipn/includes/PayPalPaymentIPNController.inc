@@ -109,7 +109,10 @@ abstract class PayPalPaymentIPNController {
     $response = chr_curl_http_request($url, array(
       'method' => 'POST',
       'data' => $data,
-      'verify_ssl' => TRUE,
+      'curl_opts' => [
+        CURLOPT_SSL_VERIFYPEER => TRUE,
+        CURLOPT_SSL_VERIFYHOST => 2,
+      ],
     ));
     // Process the response.
     if (isset($response->error)) {
