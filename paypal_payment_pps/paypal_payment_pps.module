@@ -259,7 +259,7 @@ function paypal_payment_pps_return(Payment $payment) {
   // If the payment is still pending we assume we are returning from a
   // successful payment.
   if ($payment->getStatus()->status == PAYMENT_STATUS_PENDING) {
-    $status = new PaymentStatusItem(PAYMENT_STATUS_SUCCESS);
+    $status = new PaymentStatusItem(PAYPAL_PAYMENT_STATUS_SUCCESSFULLY_RETURNED);
     // After returning from PayPal the POST data might contain something that
     // is not quite an IPN:
     // - tx: The transaction id.
