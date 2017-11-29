@@ -254,21 +254,23 @@ function paypal_payment_pps_form_redirect_access(Payment $payment, $account = NU
 function paypal_payment_pps_return(Payment $payment) {
   if (PayPalPaymentIPNController::validate($_POST)) {
     $status = PayPalPaymentIPNController::process($_POST);
-    $ipn = new PayPalPaymentIPN($_POST);
-    $ipn->pid = $status->pid;
-    $ipn->psiid = $status->psiid;
-    PayPalPaymentIPNController::save($ipn);
+    $payment->setStatus($status);
   }
   // If the payment is still pending we assume we are returning from a
   // successful payment.
   if ($payment->getStatus()->status == PAYMENT_STATUS_PENDING) {
-    $payment->setStatus(new PaymentStatusItem(PAYMENT_STATUS_SUCCESS));
-    if (isset($_POST['txn_id'])) {
-      $ipn = new PayPalPaymentIPN($_POST);
-      $ipn->pid = $status->pid;
-      $ipn->psiid = $status->psiid;
-      PayPalPaymentIPNController::save($ipn);
+    $status = new PaymentStatusItem(PAYMENT_STATUS_SUCCESS);
+    // After returning from PayPal the POST data might contain something that
+    // is not quite an IPN:
+    // - tx: The transaction id.
+    // - st: Status (usually "Pending").
+    // - amt: The total amount.
+    // - cc: The currency code.
+    // @see https://www.drupal.org/project/paypal_payment/issues/2918709#comment-12362825
+    if (isset($_POST['tx'])) {
+      $status->ipn = new PayPalPaymentIPN(['txn_id' => $_POST['tx']]);
     }
+    $payment->setStatus($status);
   }
   $payment->finish();
 }
