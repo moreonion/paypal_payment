@@ -165,12 +165,14 @@ abstract class PayPalPaymentIPNController {
   public static function process(array $ipn_variables) {
     $pid = self::PID($ipn_variables['invoice']);
     $payment = entity_load_single('payment', $pid);
-    $payment->setStatus(new PaymentStatusItem(self::convertStatus($ipn_variables)));
-    entity_save('payment', $payment);
     if ($payment->method->controller instanceof PayPalPaymentIPNPaymentMethodControllerInterface) {
       $payment->method->controller->PayPalProcessIPN($payment, $ipn_variables);
     }
-    return $payment->getStatus();
+    $new_status = new PaymentStatusItem(self::convertStatus($ipn_variables));
+    $new_status->ipn = new PayPalPaymentIPN($ipn_variables);
+    $payment->setStatus($new_status);
+    entity_save('payment', $payment);
+    return $new_status;
   }
 
   /**
