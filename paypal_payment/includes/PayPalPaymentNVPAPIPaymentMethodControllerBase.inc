@@ -130,9 +130,16 @@ abstract class PayPalPaymentNVPAPIPaymentMethodControllerBase extends PaymentMet
     }
     else {
       $nvp_response = $this->NVPAPIParseResponse($response->data);
-      if ($nvp_response
-      && isset($nvp_response['ACK']) && in_array($nvp_response['ACK'], array('Success', 'SuccessWithWarning'))) {
+      $ack = $nvp_response['ACK'] ?? '';
+      if (in_array($ack, array('Success', 'SuccessWithWarning'))) {
         return $nvp_response;
+      }
+      if ($ack == 'Failure') {      
+        watchdog('paypal_payment_ec', 'An API request failed with error @code: %error.', array(
+          '@code' => $nvp_response['L_ERRORCODE0'],
+          '%error' => $nvp_response->['L_LONGMESSAGE0'],
+        ), WATCHDOG_ERROR);
+        return FALSE;
       }
     }
     return FALSE;
